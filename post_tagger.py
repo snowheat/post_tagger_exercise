@@ -2,10 +2,17 @@
 class PostTagger:
 
     def __init__(self):
-        pass
+        self.__corpus = self.__get_corpus();
 
     def __get_corpus(self):
-        pass
+        with open('id_pud-ud-test.conllu', 'r', encoding='utf8') as fp:
+
+            all_text = fp.read().split('\n\n')
+
+        fp.close()
+
+        print(len(all_text))
+
 
     def __get_train_data(self):
         pass
