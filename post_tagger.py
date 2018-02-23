@@ -2,10 +2,11 @@
 class PostTagger:
 
     def __init__(self):
-        self.__corpus = self.__get_corpus();
         self.__dataset_basic = []
         self.__dataset_hmm = []
         self.__dataset_non_hmm = []
+        self.__corpus = self.__get_corpus();
+
 
     def __get_corpus(self):
         with open('id_pud-ud-test.conllu', 'r', encoding='utf8') as fp:
