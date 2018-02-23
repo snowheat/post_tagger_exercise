@@ -1,4 +1,5 @@
 from experiments.hmm import HMM
+from experiments.crf import CRF
 
 
 class PostTagger:
@@ -33,8 +34,8 @@ class PostTagger:
 
         # print(self.__dataset_basic[901:])
         self.__HMM = HMM()
-        self.__HMM.train(self.__dataset_basic[:900])
-        self.__HMM.test(self.__dataset_basic[901:])
+        self.__train()
+        self.__test()
 
     def __get_train_data(self):
         pass
@@ -43,7 +44,9 @@ class PostTagger:
         pass
 
     def __train(self):
+        self.__HMM.train(self.__dataset_basic[:900])
         pass
 
     def __test(self):
+        self.__HMM.test(self.__dataset_basic[901:])
         pass
