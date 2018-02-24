@@ -1,3 +1,5 @@
 from post_tagger import PostTagger
 
-postTagger = PostTagger(algorithm='rule_based')
+postTagger = PostTagger(algorithm='sgd')
+postTagger.train()
+postTagger.test()

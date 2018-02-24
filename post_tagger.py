@@ -1,6 +1,7 @@
 from experiments.hmm import HMM
 from experiments.crf import CRF
 
+import timeit
 import pickle
 from experiments.knn import Knn
 from experiments.sgd import SGD
@@ -25,7 +26,12 @@ class PostTagger:
         self.__dataset_hmm = []
 
         self.__corpus = self.__get_corpus()
-        self.__dataset_non_hmm = self.__get_training_data_non_hmm(self.__corpus)
+        self.__training_data, self.__training_feature_array, self.__training_feature_ranges, self.__training_labels = self.__get_training_data_non_hmm(self.__corpus)
+        self.__testing_data, self.__testing_labels = self.__get_testing_data_non_hmm(self.__corpus)
+
+
+        np.set_printoptions(threshold=np.nan)
+        #print(self.__corpus[901])
 
         self.__experiment = {
             'rule_based': RuleBased(),  # insan
@@ -38,6 +44,7 @@ class PostTagger:
             'knn': Knn(),
             'sgd': SGD(),
         }[algorithm]
+
 
     def __get_corpus(self):
         with open('id_pud-ud-test.conllu', 'r', encoding='utf8') as fp:
@@ -74,18 +81,37 @@ class PostTagger:
 
 
     def __get_train_data(self):
-        pass
+        train_data = {}
+
+
+        return train_data
+
+
 
     def __get_test_data(self):
         pass
 
-    def __train(self):
+    def train(self):
+        start = timeit.default_timer()
         #self.__HMM.train(self.__dataset_basic[:900])
-        pass
+        self.__experiment.train({
+            'data': self.__training_data,
+            'features': self.__training_feature_array,
+            'labels': self.__training_labels,
+        })
+        stop = timeit.default_timer()
+        print("training time : ", stop - start)
 
-    def __test(self):
+    def test(self):
+        start = timeit.default_timer()
         #self.__HMM.test(self.__dataset_basic[901:])
-        pass
+        self.__experiment.test({
+            'data': self.__testing_data,
+            'features': self.__training_feature_array,
+            'labels': self.__testing_labels,
+        })
+        stop = timeit.default_timer()
+        print("testing time : ", stop - start)
 
     def __get_training_data_non_hmm(self, corpus):
 
@@ -106,7 +132,6 @@ class PostTagger:
         print(unique_postags)
         # print(len(unique_postags))
 
-
         feature_array = np.append(unique_postags, unique_terms)
         feature_array = np.append(feature_array, unique_terms)
         feature_array = np.append(feature_array, unique_terms)
@@ -122,16 +147,14 @@ class PostTagger:
             'words_after_end': len(unique_postags) + len(unique_terms) + len(unique_terms) + len(unique_terms),
         }
 
-
         training_data = np.matlib.zeros((words_number, feature_array.size))
-
+        training_labels = np.full(words_number, 1, dtype='str')
 
         # index = np.where(feature_array[ feature_ranges['words_before_start']:feature_ranges['words_before_end'] ] == 'damai')
 
-
         i=0
+        #np.set_printoptions(threshold=np.nan)
 
-        np.set_printoptions(threshold=np.nan)
 
         # each text in training data
         for text in raw_training_data:
@@ -140,6 +163,9 @@ class PostTagger:
             for index, word_data in enumerate(text):
 
                 status = 'middle_word'
+
+                idx_label = np.where(feature_array[feature_ranges['postags_before_start']:feature_ranges['postags_before_end']] == text[index][1])[0][0]
+                training_labels[i] = str(idx_label)
 
                 # first word in text
                 if index == 0:
@@ -154,7 +180,7 @@ class PostTagger:
                 if status == 'last_word' or status == 'middle_word':
 
                     # insert into postag columns group on training data
-                    idx_postag = np.where(feature_array[feature_ranges['postags_before_start']:feature_ranges['postags_before_end']] == text[index][1])[0][0]
+                    idx_postag = np.where(feature_array[feature_ranges['postags_before_start']:feature_ranges['postags_before_end']] == text[index - 1][1])[0][0]
                     training_data[i, feature_ranges['postags_before_start'] + idx_postag] = 1.0
 
                     # insert into words_before columns group on training data
@@ -188,93 +214,107 @@ class PostTagger:
                 i+=1
 
 
-
-
         #np.set_printoptions(threshold=np.nan)
-        #print(training_data[0])
-
 
         """
-        
-        feature_array = []
-
         try:
             feature_array = pickle.load(open('feature_array.pickle', 'rb'))
         except (OSError, IOError) as e:
-            for text in corpus[:900]:
-                for index, word_data in enumerate(text):
-
-                    feature = ''
-
-                    if index == 0:
-                        feature = "-" + "-" + text[index + 1][0]
-                        if str(text[index + 1][0]).isdigit():
-                            feature = "-" + "-000"
-
-
-                    elif index == len(text) - 1:
-                        feature = text[index - 1][1] + "-" + text[index - 1][0] + "-"
-                        if str(text[index - 1][0]).isdigit():
-                            feature = text[index - 1][1] + "-000-"
-
-                    else:
-                        feature = text[index - 1][1] + "-" + text[index - 1][0] + "-" + text[index + 1][0]
-
-                        if str(text[index - 1][0]).isdigit():
-                            feature = text[index - 1][1] + "-000-" + text[index + 1][0]
-
-                        if str(text[index + 1][0]).isdigit():
-                            feature = text[index - 1][1] + "-" + text[index - 1][0] + "-000"
-
-                        if str(text[index - 1][0]).isdigit() and str(text[index + 1][0]).isdigit():
-                            feature = text[index - 1][1] + "-000-000"
-
-                    if feature not in feature_array:
-                        feature_array.append(feature)
-
             pickle.dump(feature_array, open('feature_array.pickle', 'wb'))
-
-        training_data = []
-        feature_length = len(feature_array)
-
-        try:
-            training_data = pickle.load(open('training_data.pickle', 'rb'))
-        except (OSError, IOError) as e:
-            for text in corpus[:900]:
-                for index, word_data in enumerate(text):
-
-                    training_data_row = [0]*feature_length
-
-                    feature = ''
-
-                    if index == 0:
-                        feature = "-" + "-" + text[index + 1][0]
-                        if str(text[index + 1][0]).isdigit():
-                            feature = "-" + "-000"
-
-
-                    elif index == len(text) - 1:
-                        feature = text[index - 1][1] + "-" + text[index - 1][0] + "-"
-                        if str(text[index - 1][0]).isdigit():
-                            feature = text[index - 1][1] + "-000-"
-
-                    else:
-                        feature = text[index - 1][1] + "-" + text[index - 1][0] + "-" + text[index + 1][0]
-
-                        if str(text[index - 1][0]).isdigit():
-                            feature = text[index - 1][1] + "-000-" + text[index + 1][0]
-
-                        if str(text[index + 1][0]).isdigit():
-                            feature = text[index - 1][1] + "-" + text[index - 1][0] + "-000"
-
-                        if str(text[index - 1][0]).isdigit() and str(text[index + 1][0]).isdigit():
-                            feature = text[index - 1][1] + "-000-000"
-
-                    training_data_row[ feature_array.index(feature) ] = 1
-                    training_data.append(training_data_row)
-
-            pickle.dump(training_data, open('training_data.pickle', 'wb'))
-
-        print(len(training_data))
-        
         """
+
+        return training_data, feature_array, feature_ranges, training_labels
+
+    def __get_testing_data_non_hmm(self, corpus):
+
+        raw_testing_data = corpus[901:]
+
+        training_data = self.__training_data
+        feature_array = self.__training_feature_array
+        feature_ranges = self.__training_feature_ranges
+        oov_array = []
+        total_oov = 0
+
+        words_number = 0
+
+        for text in raw_testing_data:
+            for index, word_data in enumerate(text):
+                words_number += 1
+
+        testing_data = np.matlib.zeros((words_number, feature_array.size))
+        testing_labels = np.full(words_number, 1, dtype='str')
+
+        i = 0
+        # np.set_printoptions(threshold=np.nan)
+
+        # each text in training data
+        for text in raw_testing_data:
+
+            # each word in text
+            for index, word_data in enumerate(text):
+
+
+                status = 'middle_word'
+
+                idx_label = np.where(
+                    feature_array[feature_ranges['postags_before_start']:feature_ranges['postags_before_end']] ==
+                    text[index][1])[0][0]
+                testing_labels[i] = str(idx_label)
+
+
+                # first word in text
+                if index == 0:
+                    status = 'first_word'
+
+                # last word in text
+                elif index == len(text) - 1:
+                    status = 'last_word'
+
+                if status == 'last_word' or status == 'middle_word':
+                    # insert into postag columns group on training data
+                    idx_postag = np.where(
+                        feature_array[feature_ranges['postags_before_start']:feature_ranges['postags_before_end']] ==
+                        text[index - 1][1])[0][0]
+                    testing_data[i, feature_ranges['postags_before_start'] + idx_postag] = 1.0
+
+                    # insert into words_before columns group on training data
+                    try:
+                        idx_word_before = np.where(
+                            feature_array[feature_ranges['words_before_start']:feature_ranges['words_before_end']] ==
+                            text[index - 1][0])[0][0]
+                        testing_data[i, feature_ranges['words_before_start'] + idx_word_before] = 1.0
+                    except Exception:
+                        if text[index - 1][0] not in oov_array:
+                            oov_array.append(text[index - 1][0])
+                            total_oov += 1
+
+                # insert into words_middle columns group on training data
+                try:
+
+                    idx_word_middle = np.where(
+                        feature_array[feature_ranges['words_middle_start']:feature_ranges['words_middle_end']] ==
+                        text[index][0])[0][0]
+                    testing_data[i, feature_ranges['words_middle_start'] + idx_word_middle] = 1.0
+
+                except Exception:
+                    if text[index][0] not in oov_array:
+                        oov_array.append(text[index][0])
+                        total_oov += 1
+
+                if status == 'first_word' or status == 'middle_word':
+
+                    try:
+                        # insert into words_after columns group on training data
+                        idx_word_after = np.where(
+                            feature_array[feature_ranges['words_after_start']:feature_ranges['words_after_end']] ==
+                            text[index + 1][0])[0][0]
+                        testing_data[i, feature_ranges['words_after_start'] + idx_word_after] = 1.0
+                    except Exception:
+                        if text[index + 1][0] not in oov_array:
+                            oov_array.append(text[index + 1][0])
+                            total_oov += 1
+
+
+                i += 1
+
+        return testing_data, testing_labels
