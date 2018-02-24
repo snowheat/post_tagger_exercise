@@ -19,6 +19,7 @@ class PostTagger:
 
     def __init__(self, algorithm, training_parameters={}, testing_parameters={}):
 
+        self.__dataset_basic = []
         self.__training_parameters = training_parameters
         self.__testing_parameters = testing_parameters
         self.__dataset_hmm = []
@@ -65,9 +66,9 @@ class PostTagger:
             self.__dataset_basic.append(row_data)
 
         # print(self.__dataset_basic[901:])
-        self.__HMM = HMM()
-        self.__train()
-        self.__test()
+        # self.__HMM = HMM()
+        # self.__train()
+        # self.__test()
 
         return corpus
 
@@ -79,11 +80,11 @@ class PostTagger:
         pass
 
     def __train(self):
-        self.__HMM.train(self.__dataset_basic[:900])
+        #self.__HMM.train(self.__dataset_basic[:900])
         pass
 
     def __test(self):
-        self.__HMM.test(self.__dataset_basic[901:])
+        #self.__HMM.test(self.__dataset_basic[901:])
         pass
 
     def __get_training_data_non_hmm(self, corpus):
@@ -93,7 +94,6 @@ class PostTagger:
         words_number = 0
 
         raw_training_data = corpus[:900]
-        training_data = []
 
         for text in raw_training_data:
             for index, word_data in enumerate(text):
@@ -104,7 +104,7 @@ class PostTagger:
                 words_number+=1
 
         print(unique_postags)
-        print(len(unique_postags))
+        # print(len(unique_postags))
 
 
         feature_array = np.append(unique_postags, unique_terms)
@@ -125,28 +125,73 @@ class PostTagger:
 
         training_data = np.matlib.zeros((words_number, feature_array.size))
 
-        index = np.where(feature_array[ feature_ranges['words_before_start']:feature_ranges['words_before_end'] ] == 'damai')
 
-        print(index)
-        print(feature_array[feature_ranges['words_before_start']+19])
+        # index = np.where(feature_array[ feature_ranges['words_before_start']:feature_ranges['words_before_end'] ] == 'damai')
+
 
         i=0
+
+        np.set_printoptions(threshold=np.nan)
+
+        # each text in training data
         for text in raw_training_data:
+
+            # each word in text
             for index, word_data in enumerate(text):
+
+                status = 'middle_word'
+
+                # first word in text
                 if index == 0:
-                    pass
+                    status = 'first_word'
+
+                # last word in text
                 elif index == len(text) - 1:
+                    status = 'last_word'
 
-                    idx = np.where(feature_array[feature_ranges['postags_before_start']:feature_ranges['postags_before_end']] == word_data[1])
 
 
-                    #print(word_data, idx)
-                else:
-                    pass
+                if status == 'last_word' or status == 'middle_word':
+
+                    # insert into postag columns group on training data
+                    idx_postag = np.where(feature_array[feature_ranges['postags_before_start']:feature_ranges['postags_before_end']] == text[index][1])[0][0]
+                    training_data[i, feature_ranges['postags_before_start'] + idx_postag] = 1.0
+
+                    # insert into words_before columns group on training data
+                    idx_word_before = np.where(feature_array[feature_ranges['words_before_start']:feature_ranges['words_before_end']] == text[index - 1][0])[0][0]
+                    training_data[i, feature_ranges['words_before_start'] + idx_word_before] = 1.0
+
+
+                # insert into words_middle columns group on training data
+                idx_word_middle = np.where(feature_array[feature_ranges['words_middle_start']:feature_ranges['words_middle_end']] == text[index][0])[0][0]
+                training_data[i, feature_ranges['words_middle_start'] + idx_word_middle] = 1.0
+
+
+                if status == 'first_word' or status == 'middle_word':
+                    # insert into words_after columns group on training data
+                    idx_word_after = np.where(feature_array[feature_ranges['words_after_start']:feature_ranges['words_after_end']] == text[index + 1][0])[0][0]
+                    training_data[i, feature_ranges['words_after_start'] + idx_word_after] = 1.0
+
+
+                    """
+                    print(text[index][0], idx_word_after, feature_ranges['words_after_start'] + idx_word_after,
+                          feature_array[feature_ranges['words_after_start'] + idx_word_after])
+                    """
+
+                """
+                if i == 1:
+                    print(training_data[i])
+                    print(training_data[i, feature_ranges['words_after_start'] + idx_word_after])
+                    print(feature_array[feature_ranges['words_after_start'] + idx_word_after])
+                """
+
                 i+=1
 
 
-        pass
+
+
+        #np.set_printoptions(threshold=np.nan)
+        #print(training_data[0])
 
 
         """
