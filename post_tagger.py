@@ -1,3 +1,6 @@
+from experiments.hmm import HMM
+from experiments.crf import CRF
+
 import pickle
 from experiments.knn import Knn
 from experiments.sgd import SGD
@@ -35,7 +38,6 @@ class PostTagger:
             'sgd': SGD(),
         }[algorithm]
 
-
     def __get_corpus(self):
         with open('id_pud-ud-test.conllu', 'r', encoding='utf8') as fp:
 
@@ -53,12 +55,19 @@ class PostTagger:
             row_data = []
 
             for term in row[2:]:
+                # print(term)
                 term_part = term.split()
 
                 row_data.append([term_part[1], term_part[3]])
 
             corpus.append(row_data)
 
+            self.__dataset_basic.append(row_data)
+
+        # print(self.__dataset_basic[901:])
+        self.__HMM = HMM()
+        self.__train()
+        self.__test()
 
         return corpus
 
@@ -70,9 +79,11 @@ class PostTagger:
         pass
 
     def __train(self):
+        self.__HMM.train(self.__dataset_basic[:900])
         pass
 
     def __test(self):
+        self.__HMM.test(self.__dataset_basic[901:])
         pass
 
     def __get_training_data_non_hmm(self, corpus):
